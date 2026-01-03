@@ -23,22 +23,27 @@ status_placeholder = st.empty() # Placeholder to update status later
 # We use @st.cache_resource so models load only once into RAM
 @st.cache_resource
 def load_all_brains():
-    # These paths exactly match your GitHub structure: notebooks/models/
     path = "notebooks/models/"
     
-    # Loading Signature-based model (Random Forest)
+    # 1. Load Signature-based model (Random Forest)
     rf = joblib.load(f"{path}rf_model.pkl")
     sc_rf = joblib.load(f"{path}scaler_rf.pkl")
     
-    # Loading Anomaly-based model (Autoencoder)
-    ae = tf.keras.models.load_model(f"{path}autoencoder_model.h5")
+    # 2. CRITICAL FIX: Tell Keras how to find 'mse'
+    custom_objects = {'mse': tf.keras.losses.MeanSquaredError()}
+    
+    # Load Anomaly-based model with custom objects
+    ae = tf.keras.models.load_model(
+        f"{path}autoencoder_model.h5", 
+        custom_objects=custom_objects,
+        compile=False  # This stops the version-check error
+    )
     ae_thresh = joblib.load(f"{path}ae_threshold.pkl")
     
-    # Loading Response-based model (DRL Agent)
+    # 3. Load Response-based model (DRL Agent)
     drl = DQN.load(f"{path}drl_response_agent.zip")
     
     return rf, sc_rf, ae, ae_thresh, drl
-
 # Start the loading process with a visual spinner
 with st.spinner("🧠 Initializing AI Engines... This takes about 15 seconds."):
     try:
